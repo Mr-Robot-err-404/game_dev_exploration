@@ -1,5 +1,13 @@
 package main
 
+// TODO: draw players
+// move player
+// draw ball
+// move ball
+// collision with wall
+// collision with player
+// ai logic
+
 import (
 	"time"
 
@@ -17,54 +25,23 @@ type Grid struct {
 type GameState struct {
 	board    Grid
 	terminal Grid
-	padding  Padding
-}
-type Padding struct {
-	top    int
-	bottom int
-	right  int
-	left   int
+	padding  Pos
 }
 type Draw struct {
 	pos  Pos
 	char rune
 }
-type Target struct {
-	direction string
-	value     int
-}
-type Coords struct {
-	x Target
-	y Target
-}
 
-func (gm *GameState) drawCell(coords Coords, char rune) {
-	termbox.SetCell(gm.getPos(coords.x), gm.getPos(coords.y), char, termbox.ColorGreen, termbox.ColorBlack)
+func (gm *GameState) drawCell(pos Pos, char rune) {
+	termbox.SetCell(gm.xPos(pos.x), gm.yPos(pos.y), char, termbox.ColorGreen, termbox.ColorBlack)
 }
-func (gm *GameState) getPos(target Target) int {
-	switch target.direction {
-	case "left":
-		return gm.leftPos(target.value)
-	case "right":
-		return gm.rightPos(target.value)
-	case "top":
-		return gm.topPos(target.value)
-	case "bottom":
-		return gm.bottomPos(target.value)
-	}
-	return 0
+func (gm *GameState) xPos(x int) int {
+	return gm.padding.x + x
 }
-func (gm *GameState) leftPos(x int) int {
-	return gm.padding.left + x
+func (gm *GameState) yPos(y int) int {
+	return gm.padding.y + y
 }
-func (gm *GameState) topPos(y int) int {
-	return gm.padding.top + y
-}
-func (gm *GameState) rightPos(x int) int {
-	return gm.padding.right + x
-}
-func (gm *GameState) bottomPos(y int) int {
-	return gm.padding.bottom + y
+func (gm *GameState) drawPlayer(y int) {
 }
 
 var Board = Grid{width: 60, height: 18}
@@ -79,9 +56,9 @@ func main() {
 	padding := getPadding(terminal)
 	game := GameState{board: Board, terminal: terminal, padding: padding}
 
-	game.createGrid()
-
+	game.createBoard()
 	termbox.Flush()
+
 	time.Sleep(time.Second * 5)
 }
 
@@ -90,49 +67,29 @@ func setup() Grid {
 	return Grid{width: width, height: height}
 }
 
-func (gm *GameState) createGrid() {
-	coords := Coords{
-		x: Target{direction: "left"},
-		y: Target{direction: "top"},
-	}
+func (gm *GameState) createBoard() {
 	char := '█'
 	for i := 0; i <= Board.width; i++ {
-		coords.x.value = i
-		coords.y.value = 0
-		gm.drawCell(coords, char)
+		pos := Pos{x: i, y: 0}
+		gm.drawCell(pos, char)
 
-		coords.y.value = gm.board.height
-		gm.drawCell(coords, char)
+		pos.y = gm.board.height
+		gm.drawCell(pos, char)
 	}
 	for i := 0; i <= Board.height; i++ {
-		coords.x.value = 0
-		coords.y.value = i
-		gm.drawCell(coords, char)
+		pos := Pos{x: 0, y: i}
+		gm.drawCell(pos, char)
 
-		coords.x.value = gm.board.width
-		gm.drawCell(coords, char)
+		pos.x = gm.board.width
+		gm.drawCell(pos, char)
 	}
 }
 
 func calculatePadding(dimension int, gridSize int) int {
 	return (dimension - gridSize) / 2
 }
-func getPadding(terminal Grid) Padding {
+func getPadding(terminal Grid) Pos {
 	x := calculatePadding(terminal.width, Board.width)
 	y := calculatePadding(terminal.height, Board.height)
-	return Padding{
-		left:   x,
-		top:    y,
-		bottom: normalize(y),
-		right:  normalize(x),
-	}
-}
-func isEven(n int) bool {
-	return n%2 == 0
-}
-func normalize(padding int) int {
-	if isEven(padding) {
-		return padding
-	}
-	return padding - 1
+	return Pos{x: x, y: y}
 }
