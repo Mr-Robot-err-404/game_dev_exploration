@@ -26,10 +26,17 @@ type GameState struct {
 	board    Grid
 	terminal Grid
 	padding  Pos
+	player   Pos
+	opponent Pos
 }
 type Draw struct {
 	pos  Pos
 	char rune
+}
+
+func (gm *GameState) drawPlayer(pos Pos) {
+	gm.drawCell(pos, '█')
+	gm.drawCell(Pos{x: pos.x, y: pos.y + 1}, '█')
 }
 
 func (gm *GameState) drawCell(pos Pos, char rune) {
@@ -40,8 +47,6 @@ func (gm *GameState) xPos(x int) int {
 }
 func (gm *GameState) yPos(y int) int {
 	return gm.padding.y + y
-}
-func (gm *GameState) drawPlayer(y int) {
 }
 
 var Board = Grid{width: 60, height: 18}
@@ -54,9 +59,16 @@ func main() {
 
 	terminal := setup()
 	padding := getPadding(terminal)
-	game := GameState{board: Board, terminal: terminal, padding: padding}
-
+	game := GameState{
+		board:    Board,
+		terminal: terminal,
+		padding:  padding,
+		player:   Pos{x: 2, y: Board.height / 3},
+		opponent: Pos{x: Board.width - 2, y: Board.height / 2},
+	}
 	game.createBoard()
+	game.drawPlayer(game.player)
+	game.drawPlayer(game.opponent)
 	termbox.Flush()
 
 	time.Sleep(time.Second * 5)
