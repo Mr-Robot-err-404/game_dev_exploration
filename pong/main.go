@@ -25,15 +25,46 @@ type Padding struct {
 	right  int
 	left   int
 }
-
-func (gm *GameState) drawCell(pos Pos, char rune) {
-	termbox.SetCell(gm.xPos(pos.x), gm.yPos(pos.y), char, termbox.ColorGreen, termbox.ColorBlack)
+type Draw struct {
+	pos  Pos
+	char rune
 }
-func (gm *GameState) xPos(x int) int {
+type Target struct {
+	direction string
+	value     int
+}
+type Coords struct {
+	x Target
+	y Target
+}
+
+func (gm *GameState) drawCell(coords Coords, char rune) {
+	termbox.SetCell(gm.getPos(coords.x), gm.getPos(coords.y), char, termbox.ColorGreen, termbox.ColorBlack)
+}
+func (gm *GameState) getPos(target Target) int {
+	switch target.direction {
+	case "left":
+		return gm.leftPos(target.value)
+	case "right":
+		return gm.rightPos(target.value)
+	case "top":
+		return gm.topPos(target.value)
+	case "bottom":
+		return gm.bottomPos(target.value)
+	}
+	return 0
+}
+func (gm *GameState) leftPos(x int) int {
 	return gm.padding.left + x
 }
-func (gm *GameState) yPos(y int) int {
+func (gm *GameState) topPos(y int) int {
 	return gm.padding.top + y
+}
+func (gm *GameState) rightPos(x int) int {
+	return gm.padding.right + x
+}
+func (gm *GameState) bottomPos(y int) int {
+	return gm.padding.bottom + y
 }
 
 var Board = Grid{width: 60, height: 18}
@@ -60,22 +91,26 @@ func setup() Grid {
 }
 
 func (gm *GameState) createGrid() {
-	padding := Pos{x: gm.padding.left, y: gm.padding.top}
-	for i := range Board.width {
-		x := padding.x + i
-		y := padding.y
-		termbox.SetCell(x, y, '█', termbox.ColorGreen, termbox.ColorBlack)
-
-		y = padding.y + gm.board.height - 1
-		termbox.SetCell(x, y, '█', termbox.ColorGreen, termbox.ColorBlack)
+	coords := Coords{
+		x: Target{direction: "left"},
+		y: Target{direction: "top"},
 	}
-	for i := range Board.height {
-		y := i + padding.y
-		x := 0 + padding.x
-		termbox.SetCell(x, y, '█', termbox.ColorGreen, termbox.ColorBlack)
+	char := '█'
+	for i := 0; i <= Board.width; i++ {
+		coords.x.value = i
+		coords.y.value = 0
+		gm.drawCell(coords, char)
 
-		x = pad(gm.terminal.width, padding.x)
-		termbox.SetCell(x, y, '█', termbox.ColorGreen, termbox.ColorBlack)
+		coords.y.value = gm.board.height
+		gm.drawCell(coords, char)
+	}
+	for i := 0; i <= Board.height; i++ {
+		coords.x.value = 0
+		coords.y.value = i
+		gm.drawCell(coords, char)
+
+		coords.x.value = gm.board.width
+		gm.drawCell(coords, char)
 	}
 }
 
@@ -100,11 +135,4 @@ func normalize(padding int) int {
 		return padding
 	}
 	return padding - 1
-}
-func pad(dimension int, padding int) int {
-	pos := dimension - padding
-	if isEven(dimension) {
-		return pos
-	}
-	return pos - 1
 }
