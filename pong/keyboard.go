@@ -8,7 +8,7 @@ type keyboardEvent struct {
 }
 
 const (
-	UP int = 1 + iota
+	UP int = iota
 	DOWN
 	STOP
 	END

@@ -1,9 +1,6 @@
 package main
 
-// TODO:
-// move player
-// draw ball
-// move ball
+// TODO: move ball
 // collision with wall
 // collision with player
 // ai logic
@@ -15,6 +12,13 @@ import (
 )
 
 const FPS_30 = 33 * time.Millisecond
+
+const (
+	TOP_LEFT int = iota
+	TOP_RIGHT
+	BOTTOM_LEFT
+	BOTTOM_RIGHT
+)
 
 var ch = make(chan keyboardEvent)
 var done = make(chan bool)
@@ -33,10 +37,22 @@ type GameState struct {
 	padding  Pos
 	player   Player
 	opponent Player
+	ball     Ball
+	frames   int
 }
 type Player struct {
 	position Pos
 	movement int
+}
+type Ball struct {
+	position Pos
+	movement BallMovement
+}
+type BallMovement struct {
+	north bool
+	east  bool
+	south bool
+	west  bool
 }
 type Draw struct {
 	pos  Pos
@@ -57,8 +73,27 @@ func (gm *GameState) drawPlayer(pos Pos) {
 	gm.drawCell(Pos{x: mapped.x, y: y + 2}, '▀')
 }
 
+func (gm *GameState) drawBall() {
+	pos := gm.ball.position
+	q := mapQuadrant(pos.x, pos.y)
+
+	x, y := pos.x/2, pos.y/2
+	mapped := Pos{x: x, y: y}
+
+	switch q {
+	case TOP_LEFT:
+		gm.drawCell(mapped, '▘')
+	case TOP_RIGHT:
+		gm.drawCell(mapped, '▝')
+	case BOTTOM_LEFT:
+		gm.drawCell(mapped, '▖')
+	case BOTTOM_RIGHT:
+		gm.drawCell(mapped, '▗')
+	}
+}
+
 func (gm *GameState) drawCell(pos Pos, char rune) {
-	termbox.SetCell(gm.xPos(pos.x), gm.yPos(pos.y), char, termbox.ColorGreen, termbox.ColorDefault)
+	termbox.SetCell(gm.xPos(pos.x), gm.yPos(pos.y), char, termbox.ColorGreen, termbox.ColorBlack)
 }
 func (gm *GameState) xPos(x int) int {
 	return gm.padding.x + x
@@ -68,9 +103,12 @@ func (gm *GameState) yPos(y int) int {
 }
 func (gm *GameState) render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+
 	gm.createBoard()
 	gm.drawPlayer(gm.player.position)
 	gm.drawPlayer(gm.opponent.position)
+	gm.drawBall()
+
 	termbox.Flush()
 }
 func (gm *GameState) move() {
@@ -81,9 +119,39 @@ func (gm *GameState) move() {
 	case DOWN:
 		gm.player.position.y = inc(gm.player.position.y, max)
 	}
+	gm.moveBall()
 }
 
-var Board = Grid{width: 60, height: 18}
+func (gm *GameState) moveBall() {
+	mv := gm.ball.movement
+	if mv.south {
+		gm.ball.position.y++
+	}
+	if mv.north {
+		gm.ball.position.y--
+	}
+	if mv.east {
+		gm.ball.position.x++
+	}
+	if mv.west {
+		gm.ball.position.x--
+	}
+}
+
+func mapQuadrant(x int, y int) int {
+	if isEven(x) && isEven(y) {
+		return TOP_LEFT
+	}
+	if isEven(x) {
+		return BOTTOM_LEFT
+	}
+	if isEven(y) {
+		return TOP_RIGHT
+	}
+	return BOTTOM_RIGHT
+}
+
+var Board = Grid{width: 60, height: 20}
 
 func main() {
 	if err := termbox.Init(); err != nil {
@@ -98,12 +166,16 @@ func main() {
 		terminal: terminal,
 		padding:  padding,
 		player: Player{
-			position: Pos{x: 2, y: Board.height / 3},
+			position: Pos{x: 2, y: Board.height - 1},
 			movement: STOP,
 		},
 		opponent: Player{
-			position: Pos{x: Board.width - 2, y: Board.height / 2},
+			position: Pos{x: Board.width - 2, y: Board.height - 1},
 			movement: STOP,
+		},
+		ball: Ball{
+			position: Pos{x: Board.width, y: Board.height},
+			movement: BallMovement{east: true, south: true},
 		},
 	}
 	go receiveKeyboardInput(ch)
@@ -116,6 +188,7 @@ func main() {
 		default:
 			game.move()
 			game.render()
+			game.frames++
 			time.Sleep(FPS_30)
 		}
 	}
