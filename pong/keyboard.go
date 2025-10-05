@@ -10,6 +10,8 @@ type keyboardEvent struct {
 const (
 	UP int = iota
 	DOWN
+	LEFT
+	RIGHT
 	STOP
 	PAUSE
 	END
@@ -18,24 +20,28 @@ const (
 func updateState(game *GameState, ch chan int, done chan bool) {
 	for {
 		rcv := <-ch
+		if rcv != PAUSE {
+			game.play()
+		}
 		switch rcv {
 		case UP:
 			game.player.movement = UP
-			game.paused = false
 		case DOWN:
 			game.player.movement = DOWN
-			game.paused = false
+		case LEFT:
+			game.player.movement = LEFT
+		case RIGHT:
+			game.player.movement = RIGHT
 		case STOP:
 			game.player.movement = STOP
-			game.paused = false
 		case PAUSE:
-			game.paused = !game.paused
+			game.pause()
 		case END:
 			done <- true
 		}
 	}
 }
-func receiveKeyboardInput(ch chan<- int) {
+func receiveKeyboardInput(ch chan<- int, gm *GameState) {
 	termbox.SetInputMode(termbox.InputEsc)
 
 	for {
@@ -43,8 +49,16 @@ func receiveKeyboardInput(ch chan<- int) {
 		case termbox.EventKey:
 			switch ev.Ch {
 			case 'j':
+				if gm.orientation == ALT {
+					ch <- LEFT
+					continue
+				}
 				ch <- DOWN
 			case 'k':
+				if gm.orientation == ALT {
+					ch <- RIGHT
+					continue
+				}
 				ch <- UP
 			case 'q':
 				ch <- PAUSE
