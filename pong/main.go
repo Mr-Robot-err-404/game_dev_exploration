@@ -21,6 +21,11 @@ const (
 	PLAYER_ONE int = 1 + iota
 	PLAYER_TWO
 )
+const (
+	SMALL  = 2
+	NORMAL = 4
+	LARGE  = 6
+)
 
 var ch = make(chan int)
 var done = make(chan bool)
@@ -41,40 +46,51 @@ type GameState struct {
 	opponent Player
 	ball     Ball
 	frames   int
+	active   bool
+	paused   bool
 }
 type Player struct {
 	position Pos
 	movement int
 	id       int
+	size     int
 }
 type Ball struct {
 	position Pos
-	movement BallMovement
+	movement Movement
 	maxPos   Pos
 }
-type BallMovement struct {
+type Movement struct {
 	north bool
 	east  bool
 	south bool
 	west  bool
 }
-type Draw struct {
-	pos  Pos
-	char rune
-}
 
-func (gm *GameState) drawPlayer(pos Pos) {
+func (gm *GameState) drawPlayer(pos Pos, id int) {
 	y := pos.y / 2
-	mapped := Pos{x: pos.x, y: y}
+	x := pos.x / 2
+	mapped := Pos{x: x, y: y}
 
 	if isEven(pos.y) {
-		gm.drawCell(mapped, '█')
-		gm.drawCell(Pos{x: mapped.x, y: y + 1}, '█')
+		if id == PLAYER_ONE {
+			gm.drawCell(mapped, '▐')
+			gm.drawCell(Pos{x: mapped.x, y: y + 1}, '▐')
+			return
+		}
+		gm.drawCell(mapped, '▌')
+		gm.drawCell(Pos{x: mapped.x, y: y + 1}, '▌')
 		return
 	}
-	gm.drawCell(mapped, '▄')
-	gm.drawCell(Pos{x: mapped.x, y: y + 1}, '█')
-	gm.drawCell(Pos{x: mapped.x, y: y + 2}, '▀')
+	if id == PLAYER_ONE {
+		gm.drawCell(mapped, '▗')
+		gm.drawCell(Pos{x: mapped.x, y: y + 1}, '▐')
+		gm.drawCell(Pos{x: mapped.x, y: y + 2}, '▝')
+		return
+	}
+	gm.drawCell(mapped, '▖')
+	gm.drawCell(Pos{x: mapped.x, y: y + 1}, '▌')
+	gm.drawCell(Pos{x: mapped.x, y: y + 2}, '▘')
 }
 
 func (gm *GameState) drawBall() {
@@ -109,13 +125,16 @@ func (gm *GameState) render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 
 	gm.createBoard()
-	gm.drawPlayer(gm.player.position)
-	gm.drawPlayer(gm.opponent.position)
+	gm.drawPlayer(gm.player.position, PLAYER_ONE)
+	gm.drawPlayer(gm.opponent.position, PLAYER_TWO)
 	gm.drawBall()
 
 	termbox.Flush()
 }
 func (gm *GameState) move() {
+	if gm.paused {
+		return
+	}
 	gm.collisions()
 	gm.movePlayer()
 	gm.moveBall()
@@ -167,14 +186,14 @@ func (gm *GameState) playerCollision(player Player) {
 	ball := gm.ball.position
 	pos := player.position
 
-	x := pos.x*2 + 2
+	x := pos.x + 1
 	if player.id == PLAYER_TWO {
-		x = pos.x*2 - 2
+		x = pos.x - 1
 	}
 	if ball.x != x {
 		return
 	}
-	body := playerBody(pos.y)
+	body := playerBody(pos.y, player.size)
 
 	if !slices.Contains(body, ball.y) {
 		return
@@ -263,18 +282,20 @@ func main() {
 		terminal: terminal,
 		padding:  padding,
 		player: Player{
-			position: Pos{x: 2, y: Board.height - 1},
+			position: Pos{x: 5, y: Board.height - 1},
 			movement: STOP,
 			id:       PLAYER_ONE,
+			size:     NORMAL,
 		},
 		opponent: Player{
-			position: Pos{x: Board.width - 2, y: Board.height - 1},
+			position: Pos{x: Board.width*2 - 5, y: Board.height - 1},
 			movement: STOP,
 			id:       PLAYER_TWO,
+			size:     NORMAL,
 		},
 		ball: Ball{
 			position: Pos{x: Board.width, y: Board.height},
-			movement: BallMovement{west: true, north: true},
+			movement: Movement{west: true, north: true},
 			maxPos: Pos{
 				x: Board.width*2 - 1,
 				y: Board.height*2 - 1,
@@ -289,8 +310,8 @@ func main() {
 		case <-done:
 			return
 		default:
-			game.move()
 			game.render()
+			game.move()
 			time.Sleep(FPS_30)
 		}
 	}
@@ -318,8 +339,12 @@ func (gm *GameState) createBoard() {
 		gm.drawCell(pos, char)
 	}
 }
-func playerBody(y int) []int {
-	return []int{y, y + 1, y + 2, y + 3}
+func playerBody(y int, size int) []int {
+	body := []int{}
+	for n := range size {
+		body = append(body, y+n)
+	}
+	return body
 }
 
 func calculatePadding(dimension int, gridSize int) int {

@@ -11,6 +11,7 @@ const (
 	UP int = iota
 	DOWN
 	STOP
+	PAUSE
 	END
 )
 
@@ -20,10 +21,15 @@ func updateState(game *GameState, ch chan int, done chan bool) {
 		switch rcv {
 		case UP:
 			game.player.movement = UP
+			game.paused = false
 		case DOWN:
 			game.player.movement = DOWN
+			game.paused = false
 		case STOP:
 			game.player.movement = STOP
+			game.paused = false
+		case PAUSE:
+			game.paused = !game.paused
 		case END:
 			done <- true
 		}
@@ -40,6 +46,8 @@ func receiveKeyboardInput(ch chan<- int) {
 				ch <- DOWN
 			case 'k':
 				ch <- UP
+			case 'q':
+				ch <- PAUSE
 			}
 			switch ev.Key {
 			case termbox.KeyEsc:
