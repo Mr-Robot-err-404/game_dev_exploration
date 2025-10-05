@@ -14,10 +14,10 @@ const (
 	END
 )
 
-func updateState(game *GameState, ch chan keyboardEvent, done chan bool) {
+func updateState(game *GameState, ch chan int, done chan bool) {
 	for {
 		rcv := <-ch
-		switch rcv.event {
+		switch rcv {
 		case UP:
 			game.player.movement = UP
 		case DOWN:
@@ -29,7 +29,7 @@ func updateState(game *GameState, ch chan keyboardEvent, done chan bool) {
 		}
 	}
 }
-func receiveKeyboardInput(ch chan<- keyboardEvent) {
+func receiveKeyboardInput(ch chan<- int) {
 	termbox.SetInputMode(termbox.InputEsc)
 
 	for {
@@ -37,15 +37,15 @@ func receiveKeyboardInput(ch chan<- keyboardEvent) {
 		case termbox.EventKey:
 			switch ev.Ch {
 			case 'j':
-				ch <- keyboardEvent{event: DOWN, key: termbox.Key(ev.Ch)}
+				ch <- DOWN
 			case 'k':
-				ch <- keyboardEvent{event: UP, key: termbox.Key(ev.Ch)}
+				ch <- UP
 			}
 			switch ev.Key {
 			case termbox.KeyEsc:
-				ch <- keyboardEvent{event: END, key: ev.Key}
+				ch <- END
 			case termbox.KeySpace:
-				ch <- keyboardEvent{event: STOP, key: ev.Key}
+				ch <- STOP
 			}
 		case termbox.EventError:
 			panic(ev.Err)

@@ -1,11 +1,9 @@
 package main
 
-// TODO: move ball
-// collision with wall
-// collision with player
-// ai logic
+// TODO: ai logic
 
 import (
+	"slices"
 	"time"
 
 	"github.com/nsf/termbox-go"
@@ -19,8 +17,12 @@ const (
 	BOTTOM_LEFT
 	BOTTOM_RIGHT
 )
+const (
+	PLAYER_ONE int = 1 + iota
+	PLAYER_TWO
+)
 
-var ch = make(chan keyboardEvent)
+var ch = make(chan int)
 var done = make(chan bool)
 
 type Pos struct {
@@ -43,6 +45,7 @@ type GameState struct {
 type Player struct {
 	position Pos
 	movement int
+	id       int
 }
 type Ball struct {
 	position Pos
@@ -119,34 +122,70 @@ func (gm *GameState) move() {
 }
 
 func (gm *GameState) movePlayer() {
+	min := 2
 	max := (gm.board.height - 2) * 2
 	switch gm.player.movement {
 	case UP:
-		gm.player.position.y = dec(gm.player.position.y, 2)
+		y := dec(gm.player.position.y, 2)
+		gm.player.position.y = y
+		if y == min {
+			gm.player.movement = STOP
+		}
 	case DOWN:
-		gm.player.position.y = inc(gm.player.position.y, max)
+		y := inc(gm.player.position.y, max)
+		gm.player.position.y = y
+		if y == max {
+			gm.player.movement = STOP
+		}
 	}
 }
 
 func (gm *GameState) collisions() {
+	gm.wallCollision()
+	gm.playerCollision(gm.player)
+	gm.playerCollision(gm.opponent)
+}
+func (gm *GameState) wallCollision() {
 	min, max := 2, gm.ball.maxPos
 	mv, pos := gm.ball.movement, gm.ball.position
 
 	if pos.x == max.x && mv.east {
-		gm.ball.movement.east = false
-		gm.ball.movement.west = true
+		gm.invertXMovement()
 	}
 	if pos.x == min && mv.west {
-		gm.ball.movement.west = false
-		gm.ball.movement.east = true
+		gm.invertXMovement()
 	}
 	if pos.y == max.y && mv.south {
-		gm.ball.movement.south = false
-		gm.ball.movement.north = true
+		gm.invertYMovement()
 	}
 	if pos.y == min && mv.north {
-		gm.ball.movement.north = false
-		gm.ball.movement.south = true
+		gm.invertYMovement()
+	}
+}
+
+func (gm *GameState) playerCollision(player Player) {
+	ball := gm.ball.position
+	pos := player.position
+
+	x := pos.x*2 + 2
+	if player.id == PLAYER_TWO {
+		x = pos.x*2 - 2
+	}
+	if ball.x != x {
+		return
+	}
+	body := playerBody(pos.y)
+
+	if !slices.Contains(body, ball.y) {
+		return
+	}
+	defer gm.invertXMovement()
+
+	switch player.movement {
+	case UP:
+		gm.moveBallNorth()
+	case DOWN:
+		gm.moveBallSouth()
 	}
 }
 
@@ -167,6 +206,33 @@ func (gm *GameState) moveBall() {
 	if mv.west {
 		gm.ball.position.x = dec(gm.ball.position.x, 2)
 	}
+}
+
+func (gm *GameState) moveBallNorth() {
+	gm.ball.movement.south = false
+	gm.ball.movement.north = true
+}
+func (gm *GameState) moveBallSouth() {
+	gm.ball.movement.north = false
+	gm.ball.movement.south = true
+}
+func (gm *GameState) invertXMovement() {
+	if gm.ball.movement.east {
+		gm.ball.movement.east = false
+		gm.ball.movement.west = true
+		return
+	}
+	gm.ball.movement.west = false
+	gm.ball.movement.east = true
+}
+func (gm *GameState) invertYMovement() {
+	if gm.ball.movement.north {
+		gm.ball.movement.north = false
+		gm.ball.movement.south = true
+		return
+	}
+	gm.ball.movement.south = false
+	gm.ball.movement.north = true
 }
 
 func mapQuadrant(x int, y int) int {
@@ -199,10 +265,12 @@ func main() {
 		player: Player{
 			position: Pos{x: 2, y: Board.height - 1},
 			movement: STOP,
+			id:       PLAYER_ONE,
 		},
 		opponent: Player{
 			position: Pos{x: Board.width - 2, y: Board.height - 1},
 			movement: STOP,
+			id:       PLAYER_TWO,
 		},
 		ball: Ball{
 			position: Pos{x: Board.width, y: Board.height},
@@ -223,7 +291,6 @@ func main() {
 		default:
 			game.move()
 			game.render()
-			game.frames++
 			time.Sleep(FPS_30)
 		}
 	}
@@ -250,6 +317,9 @@ func (gm *GameState) createBoard() {
 		pos.x = gm.board.width
 		gm.drawCell(pos, char)
 	}
+}
+func playerBody(y int) []int {
+	return []int{y, y + 1, y + 2, y + 3}
 }
 
 func calculatePadding(dimension int, gridSize int) int {
