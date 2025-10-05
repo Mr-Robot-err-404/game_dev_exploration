@@ -47,6 +47,7 @@ type Player struct {
 type Ball struct {
 	position Pos
 	movement BallMovement
+	maxPos   Pos
 }
 type BallMovement struct {
 	north bool
@@ -93,7 +94,7 @@ func (gm *GameState) drawBall() {
 }
 
 func (gm *GameState) drawCell(pos Pos, char rune) {
-	termbox.SetCell(gm.xPos(pos.x), gm.yPos(pos.y), char, termbox.ColorGreen, termbox.ColorBlack)
+	termbox.SetCell(gm.xPos(pos.x), gm.yPos(pos.y), char, termbox.ColorGreen, termbox.ColorDefault)
 }
 func (gm *GameState) xPos(x int) int {
 	return gm.padding.x + x
@@ -112,6 +113,12 @@ func (gm *GameState) render() {
 	termbox.Flush()
 }
 func (gm *GameState) move() {
+	gm.collisions()
+	gm.movePlayer()
+	gm.moveBall()
+}
+
+func (gm *GameState) movePlayer() {
 	max := (gm.board.height - 2) * 2
 	switch gm.player.movement {
 	case UP:
@@ -119,22 +126,46 @@ func (gm *GameState) move() {
 	case DOWN:
 		gm.player.position.y = inc(gm.player.position.y, max)
 	}
-	gm.moveBall()
+}
+
+func (gm *GameState) collisions() {
+	min, max := 2, gm.ball.maxPos
+	mv, pos := gm.ball.movement, gm.ball.position
+
+	if pos.x == max.x && mv.east {
+		gm.ball.movement.east = false
+		gm.ball.movement.west = true
+	}
+	if pos.x == min && mv.west {
+		gm.ball.movement.west = false
+		gm.ball.movement.east = true
+	}
+	if pos.y == max.y && mv.south {
+		gm.ball.movement.south = false
+		gm.ball.movement.north = true
+	}
+	if pos.y == min && mv.north {
+		gm.ball.movement.north = false
+		gm.ball.movement.south = true
+	}
 }
 
 func (gm *GameState) moveBall() {
 	mv := gm.ball.movement
+	maxH := gm.board.height*2 - 1
+	maxW := gm.board.width*2 - 1
+
 	if mv.south {
-		gm.ball.position.y++
+		gm.ball.position.y = inc(gm.ball.position.y, maxH)
 	}
 	if mv.north {
-		gm.ball.position.y--
+		gm.ball.position.y = dec(gm.ball.position.y, 2)
 	}
 	if mv.east {
-		gm.ball.position.x++
+		gm.ball.position.x = inc(gm.ball.position.x, maxW)
 	}
 	if mv.west {
-		gm.ball.position.x--
+		gm.ball.position.x = dec(gm.ball.position.x, 2)
 	}
 }
 
@@ -175,7 +206,11 @@ func main() {
 		},
 		ball: Ball{
 			position: Pos{x: Board.width, y: Board.height},
-			movement: BallMovement{east: true, south: true},
+			movement: BallMovement{west: true, north: true},
+			maxPos: Pos{
+				x: Board.width*2 - 1,
+				y: Board.height*2 - 1,
+			},
 		},
 	}
 	go receiveKeyboardInput(ch)
