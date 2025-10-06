@@ -13,6 +13,9 @@ type Logger struct {
 func (l *Logger) msg(str string) {
 	l.ch <- str
 }
+func (l *Logger) br() {
+	l.ch <- "--------------------"
+}
 
 func (l *Logger) init() {
 	conn, err := net.Dial("tcp", "localhost:7777")

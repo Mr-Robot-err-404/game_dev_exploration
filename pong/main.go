@@ -1,7 +1,9 @@
 package main
 
-// TODO: handle flipped logic
+// TODO: velocity
 // ai logic
+// scoreboard & controls text
+// pause menu
 
 import (
 	"time"
@@ -10,6 +12,7 @@ import (
 )
 
 const FPS_30 = 33 * time.Millisecond
+const FPS_60 = 17 * time.Millisecond
 
 const (
 	TOP_LEFT int = iota
@@ -113,7 +116,8 @@ func main() {
 				y: Board.height*2 - 1,
 			},
 		},
-		log: log,
+		log:    log,
+		paused: true,
 	}
 	go receiveKeyboardInput(ch, &game)
 	go updateState(&game, ch, done)
@@ -128,7 +132,7 @@ func main() {
 		default:
 			game.move()
 			game.render()
-			time.Sleep(FPS_30)
+			time.Sleep(FPS_60)
 		}
 	}
 }
@@ -143,10 +147,10 @@ func startingPlayers(orientation int) (Player, Player) {
 	if orientation == ALT {
 		x := Board.width - 1
 		return Player{
-				position: Pos{x: x, y: 4},
+				position: Pos{x: x, y: 3},
 				size:     DOUBLE,
 			}, Player{
-				position: Pos{x: x, y: Board.height*2 - 4},
+				position: Pos{x: x, y: Board.height*2 - 2},
 				size:     DOUBLE,
 			}
 	}

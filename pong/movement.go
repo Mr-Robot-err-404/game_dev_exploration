@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"slices"
 )
 
@@ -11,7 +10,11 @@ func (gm *GameState) move() {
 	}
 	gm.collisions()
 	gm.movePlayer()
-	gm.moveBall()
+
+	if isEven(gm.frames) {
+		gm.moveBall()
+	}
+	gm.frames++
 }
 
 func (gm *GameState) movePlayer() {
@@ -39,7 +42,7 @@ func (gm *GameState) movePlayer() {
 			gm.player.movement = STOP
 		}
 	case RIGHT:
-		x := inc(gm.player.position.x, maxW)
+		x := inc(gm.player.position.x, maxW-4)
 		gm.player.position.x = x
 		if x == maxW {
 			gm.player.movement = STOP
@@ -81,9 +84,9 @@ func (gm *GameState) altPlayerCollision(player Player) {
 	ball := gm.ball.position
 	pos := player.position
 
-	y := pos.y - 1
+	y := pos.y + 1
 	if player.id == PLAYER_TWO {
-		y = pos.y + 1
+		y = pos.y - 1
 	}
 	if ball.y != y {
 		return
@@ -91,10 +94,6 @@ func (gm *GameState) altPlayerCollision(player Player) {
 	body := playerBody(pos.x, player.size)
 
 	if !slices.Contains(body, ball.x) {
-		if player.id == PLAYER_ONE {
-			gm.log.msg(fmt.Sprintf("%d -> %d", body[0], body[len(body)-1]))
-			gm.log.msg(fmt.Sprintf("%d", ball.x))
-		}
 		return
 	}
 	defer gm.invertYMovement()
@@ -102,7 +101,7 @@ func (gm *GameState) altPlayerCollision(player Player) {
 	switch player.movement {
 	case LEFT:
 		gm.moveBallWest()
-	case DOWN:
+	case RIGHT:
 		gm.moveBallEast()
 	}
 }

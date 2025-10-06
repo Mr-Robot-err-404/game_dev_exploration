@@ -45,7 +45,7 @@ func (gm *GameState) drawPlayer(pos Pos, id int) {
 
 func (gm *GameState) drawAltPlayer(pos Pos, id int, x int) {
 	if isEven(x) {
-		if id == PLAYER_ONE {
+		if id == PLAYER_TWO {
 			gm.drawCell(pos, '▀')
 			gm.drawCell(Pos{x: pos.x + 1, y: pos.y}, '▀')
 			gm.drawCell(Pos{x: pos.x + 2, y: pos.y}, '▀')
@@ -58,7 +58,7 @@ func (gm *GameState) drawAltPlayer(pos Pos, id int, x int) {
 		gm.drawCell(Pos{x: pos.x + 3, y: pos.y}, '▄')
 		return
 	}
-	if id == PLAYER_ONE {
+	if id == PLAYER_TWO {
 		gm.drawCell(pos, '▝')
 		gm.drawCell(Pos{x: pos.x + 1, y: pos.y}, '▀')
 		gm.drawCell(Pos{x: pos.x + 2, y: pos.y}, '▀')
