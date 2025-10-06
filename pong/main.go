@@ -53,6 +53,7 @@ type GameState struct {
 	active      bool
 	paused      bool
 	orientation int
+	log         *Logger
 }
 type Player struct {
 	position Pos
@@ -83,7 +84,9 @@ func main() {
 	ort := ALT
 	terminal := setup()
 	padding := getPadding(terminal)
-	player_pos, opponent_pos := startingPositions(ort)
+	player, opponent := startingPlayers(ort)
+
+	log := &Logger{ch: make(chan string, 100)}
 
 	game := GameState{
 		board:       Board,
@@ -91,28 +94,32 @@ func main() {
 		padding:     padding,
 		orientation: ort,
 		player: Player{
-			position: player_pos,
+			position: player.position,
 			movement: STOP,
 			id:       PLAYER_ONE,
-			size:     NORMAL,
+			size:     player.size,
 		},
 		opponent: Player{
-			position: opponent_pos,
+			position: opponent.position,
 			movement: STOP,
 			id:       PLAYER_TWO,
-			size:     NORMAL,
+			size:     opponent.size,
 		},
 		ball: Ball{
 			position: Pos{x: Board.width, y: Board.height},
-			movement: Movement{west: true, north: true},
+			movement: Movement{east: true, south: true},
 			maxPos: Pos{
 				x: Board.width*2 - 1,
 				y: Board.height*2 - 1,
 			},
 		},
+		log: log,
 	}
 	go receiveKeyboardInput(ch, &game)
 	go updateState(&game, ch, done)
+	go log.init()
+
+	log.msg("game started")
 
 	for {
 		select {
@@ -132,12 +139,24 @@ func (gm *GameState) play() {
 	gm.paused = false
 }
 
-func startingPositions(orientation int) (Pos, Pos) {
+func startingPlayers(orientation int) (Player, Player) {
 	if orientation == ALT {
 		x := Board.width - 1
-		return Pos{x: x, y: 4}, Pos{x: x, y: Board.height*2 - 4}
+		return Player{
+				position: Pos{x: x, y: 4},
+				size:     DOUBLE,
+			}, Player{
+				position: Pos{x: x, y: Board.height*2 - 4},
+				size:     DOUBLE,
+			}
 	}
-	return Pos{x: 5, y: Board.height - 1}, Pos{x: Board.width*2 - 5, y: Board.height - 1}
+	return Player{
+			position: Pos{x: 5, y: Board.height - 1},
+			size:     NORMAL,
+		}, Player{
+			position: Pos{x: Board.width*2 - 5, y: Board.height - 1},
+			size:     NORMAL,
+		}
 }
 
 func setup() Grid {

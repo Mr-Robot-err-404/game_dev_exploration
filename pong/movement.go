@@ -1,6 +1,9 @@
 package main
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 func (gm *GameState) move() {
 	if gm.paused {
@@ -47,8 +50,14 @@ func (gm *GameState) movePlayer() {
 
 func (gm *GameState) collisions() {
 	gm.wallCollision()
-	gm.altPlayerCollision(gm.player)
-	gm.altPlayerCollision(gm.opponent)
+
+	if gm.orientation == ALT {
+		gm.altPlayerCollision(gm.player)
+		gm.altPlayerCollision(gm.opponent)
+		return
+	}
+	gm.playerCollision(gm.player)
+	gm.playerCollision(gm.opponent)
 }
 func (gm *GameState) wallCollision() {
 	min, max := 2, gm.ball.maxPos
@@ -82,6 +91,10 @@ func (gm *GameState) altPlayerCollision(player Player) {
 	body := playerBody(pos.x, player.size)
 
 	if !slices.Contains(body, ball.x) {
+		if player.id == PLAYER_ONE {
+			gm.log.msg(fmt.Sprintf("%d -> %d", body[0], body[len(body)-1]))
+			gm.log.msg(fmt.Sprintf("%d", ball.x))
+		}
 		return
 	}
 	defer gm.invertYMovement()
