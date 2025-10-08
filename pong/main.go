@@ -1,6 +1,7 @@
 package main
 
-// TODO: velocity
+// TODO:
+// opponent movement
 // ai logic
 // scoreboard & controls text
 // pause menu
@@ -13,6 +14,8 @@ import (
 
 const FPS_30 = 33 * time.Millisecond
 const FPS_60 = 17 * time.Millisecond
+const FPS_90 = 12 * time.Millisecond
+const FPS_120 = 8 * time.Millisecond
 
 const (
 	TOP_LEFT int = iota
@@ -35,6 +38,7 @@ const (
 )
 
 var ch = make(chan int)
+var mv = make(chan Mv)
 var done = make(chan bool)
 
 type Pos struct {
@@ -119,8 +123,8 @@ func main() {
 		log:    log,
 		paused: true,
 	}
-	go receiveKeyboardInput(ch, &game)
-	go updateState(&game, ch, done)
+	go receiveKeyboardInput(ch, &game, mv)
+	go updateState(Rcv{game: &game, ch: ch, done: done, mv: mv})
 	go log.init()
 
 	log.msg("game started")
@@ -132,12 +136,12 @@ func main() {
 		default:
 			game.move()
 			game.render()
-			time.Sleep(FPS_60)
+			time.Sleep(FPS_90)
 		}
 	}
 }
 func (gm *GameState) pause() {
-	gm.paused = true
+	gm.paused = !gm.paused
 }
 func (gm *GameState) play() {
 	gm.paused = false

@@ -8,46 +8,46 @@ func (gm *GameState) move() {
 	if gm.paused {
 		return
 	}
-	gm.collisions()
-	gm.movePlayer()
+	gm.movePlayer(&gm.player)
+	gm.movePlayer(&gm.opponent)
 
 	if isEven(gm.frames) {
+		gm.collisions()
 		gm.moveBall()
 	}
 	gm.frames++
 }
 
-func (gm *GameState) movePlayer() {
+func (gm *GameState) movePlayer(player *Player) {
 	min := 2
 	maxH := (gm.board.height - 2) * 2
 	maxW := (gm.board.width - 2) * 2
 
-	switch gm.player.movement {
+	switch player.movement {
 	case UP:
-		y := dec(gm.player.position.y, 2)
-		gm.player.position.y = y
+		y := dec(player.position.y, 2)
+		player.position.y = y
 		if y == min {
-			gm.player.movement = STOP
+			player.movement = STOP
 		}
 	case DOWN:
-		y := inc(gm.player.position.y, maxH)
-		gm.player.position.y = y
+		y := inc(player.position.y, maxH)
+		player.position.y = y
 		if y == maxH {
-			gm.player.movement = STOP
+			player.movement = STOP
 		}
 	case LEFT:
-		x := dec(gm.player.position.x, min)
-		gm.player.position.x = x
+		x := dec(player.position.x, min)
+		player.position.x = x
 		if x == min {
-			gm.player.movement = STOP
+			player.movement = STOP
 		}
 	case RIGHT:
-		x := inc(gm.player.position.x, maxW-4)
-		gm.player.position.x = x
+		x := inc(player.position.x, maxW-4)
+		player.position.x = x
 		if x == maxW {
-			gm.player.movement = STOP
+			player.movement = STOP
 		}
-
 	}
 }
 

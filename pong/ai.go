@@ -1,17 +1,22 @@
 package main
 
-import "time"
+// TODO: project direction of ball
+// find end coordinate
 
-func ai(gm *GameState, ch chan<- int) {
-	ticker := time.NewTicker(100 * time.Millisecond)
+type Target struct {
+	coords Pos
+	active bool
+}
+type Strategy struct {
+	prev   Movement
+	target Target
+	home   Pos
+}
 
-	defer ticker.Stop()
+func ai(gm *GameState, ping <-chan bool) {
 	for {
-		<-ticker.C
-		if !gm.active {
-			continue
-		}
+		<-ping
 	}
 }
 
-func walk() {}
+func projectPath() {}

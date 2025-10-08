@@ -1,10 +1,12 @@
 package main
 
-import "github.com/nsf/termbox-go"
+import (
+	"github.com/nsf/termbox-go"
+)
 
-type keyboardEvent struct {
-	event int
-	key   termbox.Key
+type Mv struct {
+	event     int
+	player_id int
 }
 
 const (
@@ -17,31 +19,42 @@ const (
 	END
 )
 
-func updateState(game *GameState, ch chan int, done chan bool) {
+type Rcv struct {
+	game *GameState
+	ch   chan int
+	done chan bool
+	mv   chan Mv
+}
+
+func updateState(rcv Rcv) {
 	for {
-		rcv := <-ch
-		if rcv != PAUSE {
-			game.play()
+		select {
+		case mv := <-rcv.mv:
+			rcv.game.play()
+			switch mv.event {
+			case UP:
+				assignMovement(rcv.game, mv.player_id, UP)
+			case DOWN:
+				assignMovement(rcv.game, mv.player_id, DOWN)
+			case LEFT:
+				assignMovement(rcv.game, mv.player_id, LEFT)
+			case RIGHT:
+				assignMovement(rcv.game, mv.player_id, RIGHT)
+			case STOP:
+				assignMovement(rcv.game, mv.player_id, STOP)
+			}
+		case n := <-rcv.ch:
+			switch n {
+			case PAUSE:
+				rcv.game.pause()
+			case END:
+				done <- true
+			}
 		}
-		switch rcv {
-		case UP:
-			game.player.movement = UP
-		case DOWN:
-			game.player.movement = DOWN
-		case LEFT:
-			game.player.movement = LEFT
-		case RIGHT:
-			game.player.movement = RIGHT
-		case STOP:
-			game.player.movement = STOP
-		case PAUSE:
-			game.pause()
-		case END:
-			done <- true
-		}
+
 	}
 }
-func receiveKeyboardInput(ch chan<- int, gm *GameState) {
+func receiveKeyboardInput(ch chan<- int, gm *GameState, mv chan<- Mv) {
 	termbox.SetInputMode(termbox.InputEsc)
 
 	for {
@@ -50,16 +63,29 @@ func receiveKeyboardInput(ch chan<- int, gm *GameState) {
 			switch ev.Ch {
 			case 'j':
 				if gm.orientation == ALT {
-					ch <- LEFT
+					mv <- Mv{player_id: PLAYER_ONE, event: LEFT}
 					continue
 				}
-				ch <- DOWN
+				mv <- Mv{player_id: PLAYER_ONE, event: DOWN}
 			case 'k':
 				if gm.orientation == ALT {
-					ch <- RIGHT
+					mv <- Mv{player_id: PLAYER_ONE, event: RIGHT}
 					continue
 				}
-				ch <- UP
+				mv <- Mv{player_id: PLAYER_ONE, event: UP}
+			case 'f':
+				if gm.orientation == ALT {
+					mv <- Mv{player_id: PLAYER_TWO, event: RIGHT}
+					continue
+				}
+				mv <- Mv{player_id: PLAYER_TWO, event: UP}
+			case 'd':
+				if gm.orientation == ALT {
+					mv <- Mv{player_id: PLAYER_TWO, event: LEFT}
+					continue
+				}
+				mv <- Mv{player_id: PLAYER_TWO, event: DOWN}
+
 			case 'q':
 				ch <- PAUSE
 			}
@@ -67,7 +93,9 @@ func receiveKeyboardInput(ch chan<- int, gm *GameState) {
 			case termbox.KeyEsc:
 				ch <- END
 			case termbox.KeySpace:
-				ch <- STOP
+				mv <- Mv{player_id: PLAYER_ONE, event: STOP}
+			case termbox.KeyEnter:
+				mv <- Mv{player_id: PLAYER_TWO, event: STOP}
 			}
 		case termbox.EventError:
 			panic(ev.Err)
@@ -87,4 +115,11 @@ func dec(num int, min int) int {
 		return min
 	}
 	return n
+}
+func assignMovement(gm *GameState, id int, mv int) {
+	if id == PLAYER_ONE {
+		gm.player.movement = mv
+	} else {
+		gm.opponent.movement = mv
+	}
 }
