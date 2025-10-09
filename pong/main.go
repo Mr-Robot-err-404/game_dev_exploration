@@ -1,8 +1,6 @@
 package main
 
-// TODO:
-// opponent movement
-// ai logic
+// TODO: ai logic
 // scoreboard & controls text
 // pause menu
 
@@ -36,10 +34,6 @@ const (
 	NORMAL = 4
 	DOUBLE = 8
 )
-
-var ch = make(chan int)
-var mv = make(chan Mv)
-var done = make(chan bool)
 
 type Pos struct {
 	x int
@@ -123,11 +117,19 @@ func main() {
 		log:    log,
 		paused: true,
 	}
-	go receiveKeyboardInput(ch, &game, mv)
-	go updateState(Rcv{game: &game, ch: ch, done: done, mv: mv})
-	go log.init()
+	ping := make(chan bool)
+	ch := make(chan int)
+	mv := make(chan Mv)
+	done := make(chan bool)
 
+	go ai(&game, ping)
+	go receiveKeyboardInput(ch, &game, mv)
+	go updateState(&game, ch, done, mv)
+
+	go log.init()
 	log.msg("game started")
+
+	ping <- true
 
 	for {
 		select {

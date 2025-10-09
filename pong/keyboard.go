@@ -19,34 +19,27 @@ const (
 	END
 )
 
-type Rcv struct {
-	game *GameState
-	ch   chan int
-	done chan bool
-	mv   chan Mv
-}
-
-func updateState(rcv Rcv) {
+func updateState(game *GameState, ch chan int, done chan bool, mv chan Mv) {
 	for {
 		select {
-		case mv := <-rcv.mv:
-			rcv.game.play()
-			switch mv.event {
+		case move := <-mv:
+			game.play()
+			switch move.event {
 			case UP:
-				assignMovement(rcv.game, mv.player_id, UP)
+				assignMovement(game, move.player_id, UP)
 			case DOWN:
-				assignMovement(rcv.game, mv.player_id, DOWN)
+				assignMovement(game, move.player_id, DOWN)
 			case LEFT:
-				assignMovement(rcv.game, mv.player_id, LEFT)
+				assignMovement(game, move.player_id, LEFT)
 			case RIGHT:
-				assignMovement(rcv.game, mv.player_id, RIGHT)
+				assignMovement(game, move.player_id, RIGHT)
 			case STOP:
-				assignMovement(rcv.game, mv.player_id, STOP)
+				assignMovement(game, move.player_id, STOP)
 			}
-		case n := <-rcv.ch:
+		case n := <-ch:
 			switch n {
 			case PAUSE:
-				rcv.game.pause()
+				game.pause()
 			case END:
 				done <- true
 			}
