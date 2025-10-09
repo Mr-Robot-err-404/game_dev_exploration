@@ -1,6 +1,27 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
+
+// TODO: ping:
+// change of direction
+// if in range for target
+
+const (
+	NORTH int = iota
+	EAST
+	SOUTH
+	WEST
+)
+
+var input_map = map[int]int{
+	NORTH: UP,
+	EAST:  RIGHT,
+	SOUTH: DOWN,
+	WEST:  LEFT,
+}
 
 type Target struct {
 	coords Pos
@@ -9,20 +30,54 @@ type Target struct {
 type Strategy struct {
 	prev   Movement
 	target Target
-	home   Pos
+}
+type Ai struct {
+	strat  Strategy
+	player *Player
+	home   Target
 }
 
-func ai(gm *GameState, ping <-chan bool) {
-	target := Target{active: false}
+func ai(gm *GameState, input chan<- Mv) {
+	gm.ai.home = Target{coords: Pos{
+		y: gm.ai.player.position.y,
+		x: gm.board.width,
+	}}
 	for {
-		<-ping
-		end := gm.opponent.position.y - 1
+		<-signal
+		player, strat, home := gm.ai.player, gm.ai.strat, gm.ai.home
+		position, mv := player.position, player.movement
+		body := playerBody(position.x, player.size)
+
+		gm.log.msg(fmt.Sprintf("size -> %d:%d", position.x, player.size))
+		gm.log.msg(fmt.Sprintf("body -> %d:%d", body[0], body[len(body)-1]))
+
+		if gm.ball.movement.north {
+			if isHome(position.x, body) && mv != STOP {
+				input <- Mv{event: STOP, player_id: player.id}
+				gm.ai.home.active = false
+				return
+			}
+			gm.ai.home.active = true
+
+			compass := findHome(player.position, home.coords)
+			move := input_map[compass]
+
+			gm.log.msg(fmt.Sprintf("compass: %d", compass))
+			gm.log.msg(fmt.Sprintf("move: %d", move))
+			gm.log.msg(fmt.Sprintf("player_mv: %d", player.movement))
+
+			if move != player.movement {
+				input <- Mv{event: move, player_id: player.id}
+			}
+			return
+		}
+		end := player.position.y - 1
 		pos, steps := walk(gm.ball, end, 0, gm.board)
 
-		if !target.active {
+		if !strat.target.active {
 			pos.y++
-			target.coords = pos
-			target.active = true
+			strat.target.coords = pos
+			strat.target.active = true
 			gm.opponent.position = pos
 
 			gm.log.msg(fmt.Sprintf("target -> %d:%d", pos.x, pos.y))
@@ -36,6 +91,22 @@ func walk(ball Ball, end int, steps int, board Grid) (Pos, int) {
 		return ball.position, steps
 	}
 	return walk(stepForward(ball, board), end, steps+1, board)
+}
+
+func isHome(axis int, body []int) bool {
+	return slices.Contains(body, axis)
+}
+func findHome(pos Pos, home Pos) int {
+	if pos.x < home.x {
+		return EAST
+	}
+	if pos.x > home.x {
+		return WEST
+	}
+	if pos.y < home.y {
+		return NORTH
+	}
+	return SOUTH
 }
 
 func stepForward(ball Ball, board Grid) Ball {

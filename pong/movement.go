@@ -8,8 +8,8 @@ func (gm *GameState) move() {
 	if gm.paused {
 		return
 	}
-	gm.movePlayer(&gm.player)
-	gm.movePlayer(&gm.opponent)
+	gm.movePlayer(gm.player)
+	gm.movePlayer(gm.opponent)
 
 	if isEven(gm.frames) {
 		gm.collisions()
@@ -80,7 +80,7 @@ func (gm *GameState) wallCollision() {
 	}
 }
 
-func (gm *GameState) altPlayerCollision(player Player) {
+func (gm *GameState) altPlayerCollision(player *Player) {
 	ball := gm.ball.position
 	pos := player.position
 
@@ -106,7 +106,7 @@ func (gm *GameState) altPlayerCollision(player Player) {
 	}
 }
 
-func (gm *GameState) playerCollision(player Player) {
+func (gm *GameState) playerCollision(player *Player) {
 	ball := gm.ball.position
 	pos := player.position
 

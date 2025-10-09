@@ -35,6 +35,8 @@ const (
 	DOUBLE = 8
 )
 
+var signal = make(chan bool)
+
 type Pos struct {
 	x int
 	y int
@@ -47,8 +49,9 @@ type GameState struct {
 	board       Grid
 	terminal    Grid
 	padding     Pos
-	player      Player
-	opponent    Player
+	player      *Player
+	opponent    *Player
+	ai          Ai
 	ball        Ball
 	frames      int
 	active      bool
@@ -85,7 +88,10 @@ func main() {
 	ort := ALT
 	terminal := setup()
 	padding := getPadding(terminal)
+
 	player, opponent := startingPlayers(ort)
+	player.movement, opponent.movement = STOP, STOP
+	player.id, opponent.id = PLAYER_ONE, PLAYER_TWO
 
 	log := &Logger{ch: make(chan string, 100)}
 
@@ -94,21 +100,11 @@ func main() {
 		terminal:    terminal,
 		padding:     padding,
 		orientation: ort,
-		player: Player{
-			position: player.position,
-			movement: STOP,
-			id:       PLAYER_ONE,
-			size:     player.size,
-		},
-		opponent: Player{
-			position: opponent.position,
-			movement: STOP,
-			id:       PLAYER_TWO,
-			size:     opponent.size,
-		},
+		player:      &player,
+		opponent:    &opponent,
 		ball: Ball{
 			position: Pos{x: Board.width, y: Board.height},
-			movement: Movement{east: true, south: true},
+			movement: Movement{west: true, north: true},
 			maxPos: Pos{
 				x: Board.width*2 - 1,
 				y: Board.height*2 - 1,
@@ -116,32 +112,46 @@ func main() {
 		},
 		log:    log,
 		paused: true,
+		ai:     Ai{player: &opponent},
 	}
-	ping := make(chan bool)
 	ch := make(chan int)
 	mv := make(chan Mv)
 	done := make(chan bool)
 
-	go ai(&game, ping)
+	go ai(&game, mv)
 	go receiveKeyboardInput(ch, &game, mv)
 	go updateState(&game, ch, done, mv)
 
 	go log.init()
 	log.msg("game started")
 
-	ping <- true
+	ping()
 
 	for {
 		select {
 		case <-done:
 			return
 		default:
+			game.sync()
 			game.move()
 			game.render()
 			time.Sleep(FPS_90)
 		}
 	}
 }
+func ping() {
+	signal <- true
+}
+func (gm *GameState) sync() {
+	if gm.ai.home.active {
+		body := playerBody(gm.ai.player.position.x, gm.ai.player.size)
+
+		if isHome(gm.ai.player.position.x, body) {
+			ping()
+		}
+	}
+}
+
 func (gm *GameState) pause() {
 	gm.paused = !gm.paused
 }
@@ -176,8 +186,9 @@ func setup() Grid {
 
 func playerBody(start int, size int) []int {
 	body := []int{}
-	for n := range size {
-		body = append(body, start+n)
+	end := start + size
+	for n := start; n < end; n++ {
+		body = append(body, n)
 	}
 	return body
 }
