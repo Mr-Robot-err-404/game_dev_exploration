@@ -27,62 +27,81 @@ type Target struct {
 	coords Pos
 	active bool
 }
-type Strategy struct {
-	prev   Movement
-	target Target
+type CurrentTarget struct {
+	target      Target
+	has_reached bool
 }
 type Ai struct {
-	strat  Strategy
-	player *Player
-	home   Target
+	player    *Player
+	home      Target
+	intercept Target
+	current   CurrentTarget
 }
 
 func ai(gm *GameState, input chan<- Mv) {
-	gm.ai.home = Target{coords: Pos{
-		y: gm.ai.player.position.y,
-		x: gm.board.width,
-	}}
+	gm.ai.home = Target{
+		coords: Pos{
+			y: gm.ai.player.position.y,
+			x: 15},
+		active: true,
+	}
+	gm.ai.current = CurrentTarget{has_reached: false, target: gm.ai.home}
 	for {
 		<-signal
-		player, strat, home := gm.ai.player, gm.ai.strat, gm.ai.home
-		position, mv := player.position, player.movement
+		ai := gm.ai
+		player, intercept := ai.player, ai.intercept
+
+		position := player.position
 		body := playerBody(position.x, player.size)
 
-		gm.log.msg(fmt.Sprintf("size -> %d:%d", position.x, player.size))
+		gm.log.br()
 		gm.log.msg(fmt.Sprintf("body -> %d:%d", body[0], body[len(body)-1]))
 
-		if gm.ball.movement.north {
-			if isHome(position.x, body) && mv != STOP {
-				input <- Mv{event: STOP, player_id: player.id}
-				gm.ai.home.active = false
-				return
-			}
-			gm.ai.home.active = true
-
-			compass := findHome(player.position, home.coords)
-			move := input_map[compass]
-
-			gm.log.msg(fmt.Sprintf("compass: %d", compass))
-			gm.log.msg(fmt.Sprintf("move: %d", move))
-			gm.log.msg(fmt.Sprintf("player_mv: %d", player.movement))
-
-			if move != player.movement {
-				input <- Mv{event: move, player_id: player.id}
-			}
-			return
+		if ai.home.active {
+			ai.targetHome(input, gm.log)
+			continue
 		}
+		continue
 		end := player.position.y - 1
-		pos, steps := walk(gm.ball, end, 0, gm.board)
+		pos, _ := walk(gm.ball, end, 0, gm.board)
 
-		if !strat.target.active {
+		if !intercept.active {
 			pos.y++
-			strat.target.coords = pos
-			strat.target.active = true
-			gm.opponent.position = pos
-
-			gm.log.msg(fmt.Sprintf("target -> %d:%d", pos.x, pos.y))
-			gm.log.msg(fmt.Sprintf("steps -> %d", steps))
+			gm.ai.intercept.coords = pos
 		}
+	}
+}
+
+func (ai *Ai) targetHome(input chan<- Mv, log *Logger) {
+	if ai.current.has_reached {
+		ai.atHome(input, log)
+		return
+	}
+	ai.goHome(input, log)
+}
+
+func (ai *Ai) goHome(input chan<- Mv, log *Logger) {
+	compass := findHome(ai.player.position, ai.home.coords)
+	move := input_map[compass]
+
+	log.msg(fmt.Sprintf("PING: need to move compass:%d move:%d", compass, move))
+	log.msg(fmt.Sprintf("PING: current pos x:%d, target x:%d", ai.player.position.x, ai.home.coords.x))
+
+	if move != ai.player.movement {
+		input <- Mv{event: move, player_id: ai.player.id}
+		log.msg(fmt.Sprintf("PING: sent move command %d", move))
+	} else {
+		log.msg("PING: already moving in correct direction")
+	}
+}
+
+func (ai *Ai) atHome(input chan<- Mv, log *Logger) {
+	log.msg("PING: at home, stopping")
+	ai.home.active = false
+
+	if ai.player.movement != STOP {
+		input <- Mv{event: STOP, player_id: ai.player.id}
+		log.msg("PING: sent STOP command")
 	}
 }
 
@@ -93,7 +112,7 @@ func walk(ball Ball, end int, steps int, board Grid) (Pos, int) {
 	return walk(stepForward(ball, board), end, steps+1, board)
 }
 
-func isHome(axis int, body []int) bool {
+func inTargetArea(axis int, body []int) bool {
 	return slices.Contains(body, axis)
 }
 func findHome(pos Pos, home Pos) int {

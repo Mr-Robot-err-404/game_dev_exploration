@@ -110,9 +110,8 @@ func main() {
 				y: Board.height*2 - 1,
 			},
 		},
-		log:    log,
-		paused: true,
-		ai:     Ai{player: &opponent},
+		log: log,
+		ai:  Ai{player: &opponent},
 	}
 	ch := make(chan int)
 	mv := make(chan Mv)
@@ -123,6 +122,7 @@ func main() {
 	go updateState(&game, ch, done, mv)
 
 	go log.init()
+	log.br()
 	log.msg("game started")
 
 	ping()
@@ -143,12 +143,12 @@ func ping() {
 	signal <- true
 }
 func (gm *GameState) sync() {
-	if gm.ai.home.active {
-		body := playerBody(gm.ai.player.position.x, gm.ai.player.size)
+	body := playerBody(gm.ai.player.position.x, gm.ai.player.size)
+	coords := gm.ai.current.target.coords
 
-		if isHome(gm.ai.player.position.x, body) {
-			ping()
-		}
+	if !gm.ai.current.has_reached && inTargetArea(coords.x, body) {
+		gm.ai.current.has_reached = true
+		ping()
 	}
 }
 
