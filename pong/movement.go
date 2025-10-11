@@ -134,6 +134,8 @@ func (gm *GameState) playerCollision(player *Player) {
 
 func (gm *GameState) moveBall() {
 	mv := gm.ball.movement
+	gm.ball.prev = mv
+
 	maxH := gm.board.height*2 - 1
 	maxW := gm.board.width*2 - 1
 
@@ -149,6 +151,11 @@ func (gm *GameState) moveBall() {
 	if mv.west {
 		gm.ball.position.x = dec(gm.ball.position.x, 2)
 	}
+}
+
+func (b *Ball) hasBounced() bool {
+	prev, curr := b.prev, b.movement
+	return prev.north != curr.north || prev.south != curr.south
 }
 
 func (gm *GameState) moveBallNorth() {

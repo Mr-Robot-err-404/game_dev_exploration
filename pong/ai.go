@@ -15,6 +15,11 @@ const (
 	SOUTH
 	WEST
 )
+const (
+	START int = iota
+	BOUNCE
+	TARGET_AREA
+)
 
 var input_map = map[int]int{
 	NORTH: UP,
@@ -36,9 +41,11 @@ type Ai struct {
 	home      Target
 	intercept Target
 	current   CurrentTarget
+	input     chan<- Mv
+	log       *Logger
 }
 
-func ai(gm *GameState, input chan<- Mv) {
+func ai(gm *GameState) {
 	gm.ai.home = Target{
 		coords: Pos{
 			y: gm.ai.player.position.y,
@@ -47,60 +54,126 @@ func ai(gm *GameState, input chan<- Mv) {
 	}
 	gm.ai.current = CurrentTarget{has_reached: false, target: gm.ai.home}
 	for {
-		<-signal
-		ai := gm.ai
-		player, intercept := ai.player, ai.intercept
+		ctx := <-signal
+		gm.log.msg(fmt.Sprintf("CTX: %d", ctx))
+
+		ai := &gm.ai
+		player := ai.player
 
 		position := player.position
 		body := playerBody(position.x, player.size)
 
 		gm.log.br()
-		gm.log.msg(fmt.Sprintf("body -> %d:%d", body[0], body[len(body)-1]))
+		gm.log.msg(fmt.Sprintf("%d:%d", body[0], body[len(body)-1]))
 
-		if ai.home.active {
-			ai.targetHome(input, gm.log)
+		if ctx == BOUNCE || ctx == START {
+			ai.bounce(gm.log, gm.ball, gm.board)
 			continue
 		}
-		continue
-		end := player.position.y - 1
-		pos, _ := walk(gm.ball, end, 0, gm.board)
-
-		if !intercept.active {
-			pos.y++
-			gm.ai.intercept.coords = pos
+		if ctx == TARGET_AREA {
+			ai.targetArea(gm.log)
 		}
 	}
 }
 
-func (ai *Ai) targetHome(input chan<- Mv, log *Logger) {
-	if ai.current.has_reached {
-		ai.atHome(input, log)
+func (ai *Ai) targetArea(log *Logger) {
+	if ai.home.active {
+		ai.atHome(log)
 		return
 	}
-	ai.goHome(input, log)
+	ai.atIntercept(log)
 }
 
-func (ai *Ai) goHome(input chan<- Mv, log *Logger) {
+func (ai *Ai) bounce(log *Logger, ball Ball, board Grid) {
+	if ball.movement.south {
+		end := ai.player.position.y - 1
+		pos, _ := walk(ball, end, 0, board)
+		pos.y++
+
+		ai.assignIntercept(pos)
+		ai.targetIntercept(log)
+		return
+	}
+	ai.assignHome(ai.home.coords)
+	ai.targetHome(log)
+}
+
+func (ai *Ai) assignHome(pos Pos) {
+	ai.home.coords = pos
+	ai.home.active = true
+	ai.current.target = ai.home
+	ai.current.has_reached = false
+	ai.intercept.active = false
+}
+
+func (ai *Ai) assignIntercept(pos Pos) {
+	ai.intercept.coords = pos
+	ai.intercept.active = true
+	ai.current.target = ai.intercept
+	ai.current.has_reached = false
+	ai.home.active = false
+}
+
+func (ai *Ai) targetIntercept(log *Logger) {
+	if ai.current.has_reached {
+		ai.atIntercept(log)
+		return
+	}
+	ai.goToIntercept(log)
+}
+
+func (ai *Ai) goToIntercept(log *Logger) {
+	compass := findHome(ai.player.position, ai.intercept.coords)
+	move := input_map[compass]
+
+	log.msg(fmt.Sprintf("PING: current pos x:%d, intercept x:%d", ai.player.position.x, ai.intercept.coords.x))
+
+	if move != ai.player.movement {
+		ai.input <- Mv{event: move, player_id: ai.player.id}
+		log.msg(fmt.Sprintf("PING: sent move command %d", move))
+		return
+	}
+	log.msg("PING: already moving towards intercept")
+}
+
+func (ai *Ai) atIntercept(log *Logger) {
+	log.msg("PING: at intercept, stopping")
+	ai.intercept.active = false
+
+	if ai.player.movement != STOP {
+		ai.input <- Mv{event: STOP, player_id: ai.player.id}
+		log.msg("PING: sent STOP command")
+	}
+}
+
+func (ai *Ai) targetHome(log *Logger) {
+	if ai.current.has_reached {
+		ai.atHome(log)
+		return
+	}
+	ai.goHome(log)
+}
+
+func (ai *Ai) goHome(log *Logger) {
 	compass := findHome(ai.player.position, ai.home.coords)
 	move := input_map[compass]
 
-	log.msg(fmt.Sprintf("PING: need to move compass:%d move:%d", compass, move))
-	log.msg(fmt.Sprintf("PING: current pos x:%d, target x:%d", ai.player.position.x, ai.home.coords.x))
+	log.msg(fmt.Sprintf("PING: x:%d, home:%d", ai.player.position.x, ai.home.coords.x))
 
 	if move != ai.player.movement {
-		input <- Mv{event: move, player_id: ai.player.id}
+		ai.input <- Mv{event: move, player_id: ai.player.id}
 		log.msg(fmt.Sprintf("PING: sent move command %d", move))
 	} else {
-		log.msg("PING: already moving in correct direction")
+		log.msg("PING: already going home")
 	}
 }
 
-func (ai *Ai) atHome(input chan<- Mv, log *Logger) {
+func (ai *Ai) atHome(log *Logger) {
 	log.msg("PING: at home, stopping")
 	ai.home.active = false
 
 	if ai.player.movement != STOP {
-		input <- Mv{event: STOP, player_id: ai.player.id}
+		ai.input <- Mv{event: STOP, player_id: ai.player.id}
 		log.msg("PING: sent STOP command")
 	}
 }

@@ -35,7 +35,7 @@ const (
 	DOUBLE = 8
 )
 
-var signal = make(chan bool)
+var signal = make(chan int)
 
 type Pos struct {
 	x int
@@ -68,6 +68,7 @@ type Player struct {
 type Ball struct {
 	position Pos
 	movement Movement
+	prev     Movement
 	maxPos   Pos
 }
 type Movement struct {
@@ -95,6 +96,10 @@ func main() {
 
 	log := &Logger{ch: make(chan string, 100)}
 
+	ch := make(chan int)
+	mv := make(chan Mv)
+	done := make(chan bool)
+
 	game := GameState{
 		board:       Board,
 		terminal:    terminal,
@@ -111,13 +116,10 @@ func main() {
 			},
 		},
 		log: log,
-		ai:  Ai{player: &opponent},
+		ai:  Ai{player: &opponent, log: log, input: mv},
 	}
-	ch := make(chan int)
-	mv := make(chan Mv)
-	done := make(chan bool)
 
-	go ai(&game, mv)
+	go ai(&game)
 	go receiveKeyboardInput(ch, &game, mv)
 	go updateState(&game, ch, done, mv)
 
@@ -125,7 +127,7 @@ func main() {
 	log.br()
 	log.msg("game started")
 
-	ping()
+	ping(START)
 
 	for {
 		select {
@@ -139,16 +141,20 @@ func main() {
 		}
 	}
 }
-func ping() {
-	signal <- true
+func ping(ctx int) {
+	signal <- ctx
 }
 func (gm *GameState) sync() {
 	body := playerBody(gm.ai.player.position.x, gm.ai.player.size)
 	coords := gm.ai.current.target.coords
 
+	if gm.ball.hasBounced() {
+		ping(BOUNCE)
+		return
+	}
 	if !gm.ai.current.has_reached && inTargetArea(coords.x, body) {
 		gm.ai.current.has_reached = true
-		ping()
+		ping(TARGET_AREA)
 	}
 }
 
