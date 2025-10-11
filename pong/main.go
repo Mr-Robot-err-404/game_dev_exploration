@@ -51,7 +51,7 @@ type GameState struct {
 	padding     Pos
 	player      *Player
 	opponent    *Player
-	ai          Ai
+	ai          *Ai
 	ball        Ball
 	frames      int
 	active      bool
@@ -110,20 +110,20 @@ func main() {
 		ball: Ball{
 			position: Pos{x: Board.width, y: Board.height},
 			movement: Movement{west: true, north: true},
+			prev:     Movement{west: true, north: true},
 			maxPos: Pos{
 				x: Board.width*2 - 1,
 				y: Board.height*2 - 1,
 			},
 		},
 		log: log,
-		ai:  Ai{player: &opponent, log: log, input: mv},
+		ai:  &Ai{player: &opponent, log: log, input: mv},
 	}
-
 	go ai(&game)
 	go receiveKeyboardInput(ch, &game, mv)
 	go updateState(&game, ch, done, mv)
-
 	go log.init()
+
 	log.br()
 	log.msg("game started")
 
@@ -134,7 +134,6 @@ func main() {
 		case <-done:
 			return
 		default:
-			game.sync()
 			game.move()
 			game.render()
 			time.Sleep(FPS_90)

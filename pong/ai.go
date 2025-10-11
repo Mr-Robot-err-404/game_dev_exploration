@@ -5,9 +5,8 @@ import (
 	"slices"
 )
 
-// TODO: ping:
-// change of direction
-// if in range for target
+// TODO:
+// handle side collisions
 
 const (
 	NORTH int = iota
@@ -20,6 +19,12 @@ const (
 	BOUNCE
 	TARGET_AREA
 )
+
+var ctx_map = map[int]string{
+	START:       "start",
+	BOUNCE:      "bounce",
+	TARGET_AREA: "target_area",
+}
 
 var input_map = map[int]int{
 	NORTH: UP,
@@ -49,21 +54,21 @@ func ai(gm *GameState) {
 	gm.ai.home = Target{
 		coords: Pos{
 			y: gm.ai.player.position.y,
-			x: 15},
+			x: 5},
 		active: true,
 	}
 	gm.ai.current = CurrentTarget{has_reached: false, target: gm.ai.home}
 	for {
 		ctx := <-signal
-		gm.log.msg(fmt.Sprintf("CTX: %d", ctx))
 
-		ai := &gm.ai
+		ai := gm.ai
 		player := ai.player
 
 		position := player.position
 		body := playerBody(position.x, player.size)
 
 		gm.log.br()
+		gm.log.msg(ctx_map[ctx])
 		gm.log.msg(fmt.Sprintf("%d:%d", body[0], body[len(body)-1]))
 
 		if ctx == BOUNCE || ctx == START {
@@ -205,18 +210,33 @@ func stepForward(ball Ball, board Grid) Ball {
 	mv := ball.movement
 	maxH := board.height*2 - 1
 	maxW := board.width*2 - 1
+	min := 2
+
+	collision(&ball, maxW-1, min+1)
 
 	if mv.south {
 		ball.position.y = inc(ball.position.y, maxH)
 	}
 	if mv.north {
-		ball.position.y = dec(ball.position.y, 2)
+		ball.position.y = dec(ball.position.y, min)
 	}
 	if mv.east {
 		ball.position.x = inc(ball.position.x, maxW)
 	}
 	if mv.west {
-		ball.position.x = dec(ball.position.x, 2)
+		ball.position.x = dec(ball.position.x, min)
 	}
 	return ball
+}
+
+func collision(ball *Ball, max int, min int) {
+	if ball.movement.east && ball.position.x == max {
+		ball.movement.east = false
+		ball.movement.west = true
+		return
+	}
+	if ball.movement.west && ball.position.x == min {
+		ball.movement.west = false
+		ball.movement.east = true
+	}
 }

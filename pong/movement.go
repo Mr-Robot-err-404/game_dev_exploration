@@ -12,6 +12,7 @@ func (gm *GameState) move() {
 	gm.movePlayer(gm.opponent)
 
 	if isEven(gm.frames) {
+		gm.sync()
 		gm.collisions()
 		gm.moveBall()
 	}
@@ -52,6 +53,7 @@ func (gm *GameState) movePlayer(player *Player) {
 }
 
 func (gm *GameState) collisions() {
+	gm.ball.prev = gm.ball.movement
 	gm.wallCollision()
 
 	if gm.orientation == ALT {
@@ -134,7 +136,6 @@ func (gm *GameState) playerCollision(player *Player) {
 
 func (gm *GameState) moveBall() {
 	mv := gm.ball.movement
-	gm.ball.prev = mv
 
 	maxH := gm.board.height*2 - 1
 	maxW := gm.board.width*2 - 1
