@@ -2,6 +2,10 @@ package main
 
 type Ascii [3][3]rune
 
+const Container_Width = 7
+const Ascii_Width = 3
+const Gap = 1
+
 var zero = Ascii{
 	{'▄', '▄', '▄'},
 	{'█', ' ', '█'},

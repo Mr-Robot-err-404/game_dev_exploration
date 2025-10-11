@@ -3,8 +3,15 @@ package main
 import "github.com/nsf/termbox-go"
 
 type Scoreboard struct {
-	padding Pos
+	coords Pos
 }
+
+const (
+	RIGHT_COL int = iota
+	LEFT_COl
+	RIGHT_ROW
+	LEFT_ROW
+)
 
 func (gm *GameState) drawAscii(ascii Ascii) {
 	for y, row := range ascii {
@@ -15,15 +22,12 @@ func (gm *GameState) drawAscii(ascii Ascii) {
 		}
 	}
 }
-
 func (gm *GameState) drawAsciiCell(pos Pos, char rune) {
 	termbox.SetCell(gm.asciiXPos(pos.x), gm.asciiYPos(pos.y), char, termbox.ColorGreen, termbox.ColorDefault)
 }
-
 func (gm *GameState) asciiXPos(x int) int {
-	return gm.padding.x - gm.scorboard.padding.x + x
+	return gm.scorboard.coords.x + x
 }
-
 func (gm *GameState) asciiYPos(y int) int {
-	return gm.padding.y + gm.scorboard.padding.y + y
+	return gm.scorboard.coords.y + y
 }

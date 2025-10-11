@@ -1,8 +1,10 @@
 package main
 
 // TODO:
-// scoreboard & controls text
+// scoreboard ascii
+// scoring system
 // pause menu
+// game over menu
 // ai strategies -> aggressive, safe, noob, margin for error
 
 import (
@@ -119,7 +121,7 @@ func main() {
 			},
 		},
 		scorboard: Scoreboard{
-			padding: Pos{y: 0, x: 5},
+			coords: Pos{y: padding.y, x: calculatePadding(padding.x, Container_Width)},
 		},
 		log:    log,
 		ai:     &Ai{player: &opponent, log: log, input: mv},
@@ -133,7 +135,7 @@ func main() {
 	log.br()
 	log.msg("game started")
 
-	// ping(START)
+	ping(START)
 
 	for {
 		select {
