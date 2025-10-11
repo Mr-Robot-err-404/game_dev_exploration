@@ -1,8 +1,9 @@
 package main
 
-// TODO: ai logic
+// TODO:
 // scoreboard & controls text
 // pause menu
+// ai strategies -> aggressive, safe, noob, margin for error
 
 import (
 	"time"
@@ -50,6 +51,7 @@ type GameState struct {
 	terminal    Grid
 	padding     Pos
 	player      *Player
+	scorboard   Scoreboard
 	opponent    *Player
 	ai          *Ai
 	ball        Ball
@@ -116,8 +118,12 @@ func main() {
 				y: Board.height*2 - 1,
 			},
 		},
-		log: log,
-		ai:  &Ai{player: &opponent, log: log, input: mv},
+		scorboard: Scoreboard{
+			padding: Pos{y: 0, x: 5},
+		},
+		log:    log,
+		ai:     &Ai{player: &opponent, log: log, input: mv},
+		paused: true,
 	}
 	go ai(&game)
 	go receiveKeyboardInput(ch, &game, mv)
@@ -127,7 +133,7 @@ func main() {
 	log.br()
 	log.msg("game started")
 
-	ping(START)
+	// ping(START)
 
 	for {
 		select {
