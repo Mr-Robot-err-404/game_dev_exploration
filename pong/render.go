@@ -6,7 +6,8 @@ func (gm *GameState) render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 
 	gm.createBoard()
-	gm.drawAscii(nine)
+	gm.drawScoreboard()
+
 	gm.drawPlayer(gm.player.position, PLAYER_ONE)
 	gm.drawPlayer(gm.opponent.position, PLAYER_TWO)
 	gm.drawBall()
