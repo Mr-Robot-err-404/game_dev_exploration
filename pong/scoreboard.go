@@ -4,6 +4,7 @@ import "github.com/nsf/termbox-go"
 
 type Scoreboard struct {
 	coords Pos
+	border Pos
 }
 
 const (
@@ -24,8 +25,38 @@ func (gm *GameState) drawScoreboard() {
 	gm.drawAscii(three, Ascii_Display{SECOND_ROW, LEFT_COl}, PLAYER_TWO)
 	gm.drawAscii(one, Ascii_Display{SECOND_ROW, RIGHT_COL}, PLAYER_TWO)
 }
-func (gm *GameState) drawAsciiDivider() {
 
+func (gm *GameState) drawAsciiBorder(id int) {
+	pos := gm.scorboard.border
+	endX := pos.x + Border_Width
+	endY := pos.y + Border_Height
+
+	for i := pos.x; i < endX; i++ {
+		gm.drawBorderCell(Pos{x: i, y: pos.y}, '-', id)
+	}
+	for i := pos.x; i < endX; i++ {
+		gm.drawBorderCell(Pos{x: i, y: endY}, '-', id)
+	}
+	for i := pos.y + 1; i < endY; i++ {
+		gm.drawBorderCell(Pos{x: pos.x, y: i}, '|', id)
+	}
+	for i := pos.y + 1; i < endY; i++ {
+		gm.drawBorderCell(Pos{x: endX - 1, y: i}, '|', id)
+	}
+}
+
+func (gm *GameState) drawBorderCell(pos Pos, char rune, id int) {
+	termbox.SetCell(gm.borderXPos(pos.x, id), gm.borderYPos(pos.y), char, termbox.ColorGreen, termbox.ColorDefault)
+}
+
+func (gm *GameState) borderXPos(x int, id int) int {
+	if id == PLAYER_TWO {
+		return gm.terminal.width - gm.scorboard.coords.x - x
+	}
+	return x
+}
+func (gm *GameState) borderYPos(y int) int {
+	return y
 }
 
 func (gm *GameState) drawAscii(ascii Ascii, display Ascii_Display, id int) {

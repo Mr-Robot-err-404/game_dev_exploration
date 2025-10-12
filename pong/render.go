@@ -7,6 +7,8 @@ func (gm *GameState) render() {
 
 	gm.createBoard()
 	gm.drawScoreboard()
+	gm.drawAsciiBorder(PLAYER_ONE)
+	// gm.drawAsciiBorder(PLAYER_TWO)
 
 	gm.drawPlayer(gm.player.position, PLAYER_ONE)
 	gm.drawPlayer(gm.opponent.position, PLAYER_TWO)

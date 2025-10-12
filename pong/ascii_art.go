@@ -3,9 +3,11 @@ package main
 type Ascii [3][3]rune
 type Ascii_Display = [2]int
 
-const Container_Width = 7
+const Container_Size = 7
 const Ascii_Width = 3
 const Ascii_Height = 3
+const Border_Width = Container_Size + 4
+const Border_Height = Container_Size + 1
 const Gap = 1
 
 var zero = Ascii{

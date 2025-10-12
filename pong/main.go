@@ -1,7 +1,6 @@
 package main
 
 // TODO:
-// scoreboard ascii
 // scoring system
 // pause menu
 // game over menu
@@ -97,6 +96,7 @@ func main() {
 	player, opponent := startingPlayers(ort)
 	player.movement, opponent.movement = STOP, STOP
 	player.id, opponent.id = PLAYER_ONE, PLAYER_TWO
+	scorboard_coords := Pos{y: padding.y, x: calculatePadding(padding.x, Container_Size)}
 
 	log := &Logger{ch: make(chan string, 100)}
 
@@ -121,7 +121,8 @@ func main() {
 			},
 		},
 		scorboard: Scoreboard{
-			coords: Pos{y: padding.y, x: calculatePadding(padding.x, Container_Width)},
+			coords: scorboard_coords,
+			border: Pos{x: scorboard_coords.x - 2, y: scorboard_coords.y - 1},
 		},
 		log:    log,
 		ai:     &Ai{player: &opponent, log: log, input: mv},
